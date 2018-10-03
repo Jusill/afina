@@ -17,7 +17,7 @@ namespace Backend {
  */
 class SimpleLRU : public Afina::Storage {
 public:
-    SimpleLRU(size_t max_size = 1024) : _max_size(max_size) {}
+    SimpleLRU(size_t max_size = 1024) : _max_size(max_size), _free_space(max_size), _lru_ptr(nullptr) {}
 
     ~SimpleLRU() {
         _lru_index.clear();
@@ -46,6 +46,15 @@ private:
         std::string value;
         std::unique_ptr<lru_node> prev;
         std::unique_ptr<lru_node> next;
+        ~lru_node()
+        {
+            std::unique_ptr<lru_node> current = std::move(next);
+            while(current)
+            {
+              current = std::move(current->next);
+            }
+            //for (std::unique_ptr<lru_node> current = std::move(next); current; current = std::move(current->next));
+        }
     };
 
     // Maximum number of bytes could be stored in this cache.
@@ -57,9 +66,14 @@ private:
     //
     // List owns all nodes
     std::unique_ptr<lru_node> _lru_head;
+    std::unique_ptr<lru_node> _lru_tail;
 
     // Index of nodes from list above, allows fast random access to elements by lru_node#key
     std::map<std::reference_wrapper<std::string>, std::reference_wrapper<lru_node>> _lru_index;
+
+    bool _Delete_tail_node();
+    void _Insert_in_list(lru_node* const _node);
+    void _Insert_in_storage(lru_node* const _node);
 };
 
 } // namespace Backend
