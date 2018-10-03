@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <iostream>
 
 #include <afina/Storage.h>
 
@@ -17,11 +18,19 @@ namespace Backend {
  */
 class SimpleLRU : public Afina::Storage {
 public:
-    SimpleLRU(size_t max_size = 1024) : _max_size(max_size), _free_space(max_size), _lru_ptr(nullptr) {}
+    SimpleLRU(size_t max_size = 1024) : _max_size(max_size), _cur_size(0), _lru_head(nullptr), _lru_tail(nullptr) {}
 
     ~SimpleLRU() {
         _lru_index.clear();
-        _lru_head.reset(); // TODO: Here is stack overflow
+        if (_lru_head == nullptr) {
+        	return;
+        }
+        while (_lru_head->next != nullptr) {
+        	lru_node * tmp = _lru_head->next->prev;
+        	_lru_head.swap(_lru_head->next);
+        	tmp->next.reset();
+        }
+        _lru_head.reset();
     }
 
     // Implements Afina::Storage interface
@@ -37,29 +46,24 @@ public:
     bool Delete(const std::string &key) override;
 
     // Implements Afina::Storage interface
-    bool Get(const std::string &key, std::string &value) const override;
+    bool Get(const std::string &key, std::string &value) override;
 
 private:
     // LRU cache node
     using lru_node = struct lru_node {
-        std::string key;
+        const std::string key;
         std::string value;
         std::unique_ptr<lru_node> prev;
         std::unique_ptr<lru_node> next;
-        ~lru_node()
-        {
-            std::unique_ptr<lru_node> current = std::move(next);
-            while(current)
-            {
-              current = std::move(current->next);
-            }
-            //for (std::unique_ptr<lru_node> current = std::move(next); current; current = std::move(current->next));
-        }
+
+        lru_node(const std::string key, const std::string value, lru_node * prev) : key(key), value(value), prev(prev), next(nullptr) {}
+        lru_node() : key(""), value(""), prev(nullptr), next(nullptr) {}
     };
 
     // Maximum number of bytes could be stored in this cache.
     // i.e all (keys+values) must be less the _max_size
     std::size_t _max_size;
+    std::size_t _cur_size;
 
     // Main storage of lru_nodes, elements in this list ordered descending by "freshness": in the head
     // element that wasn't used for longest time.
@@ -69,11 +73,19 @@ private:
     std::unique_ptr<lru_node> _lru_tail;
 
     // Index of nodes from list above, allows fast random access to elements by lru_node#key
-    std::map<std::reference_wrapper<std::string>, std::reference_wrapper<lru_node>> _lru_index;
+    std::map<std::reference_wrapper<const std::string>, std::reference_wrapper<lru_node>, std::less<std::string>> _lru_index;
 
-    bool _Delete_tail_node();
-    void _Insert_in_list(lru_node* const _node);
-    void _Insert_in_storage(lru_node* const _node);
+    bool _DeleteOld();
+
+    bool _Insert_to_list(const std::string &key, const std::string &value);
+
+    bool _Erase_from_list(lru_node &node);
+
+    bool _Update_in_list(lru_node &node, const std::string &value);
+
+    bool _insert_ptr(lru_node &node);
+
+    bool _erase_ptr(lru_node &node);
 };
 
 } // namespace Backend
