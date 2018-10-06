@@ -102,7 +102,7 @@ void ServerImpl::Join()
     std::unique_lock<std::mutex> lck(_mutex);
     while (workers.size() > 0)
     {
-        cv.wait(lck);
+        _cv.wait(lck);
     }
 
     assert(_thread.joinable());
@@ -163,7 +163,7 @@ void ServerImpl::OnRun()
     std::unique_lock<std::mutex> lck(_mutex);
     while(workers.size() != 0)
     {
-        cv.wait(lck);
+        _cv.wait(lck);
     }
 
     _logger->warn("Network stopped");
@@ -273,11 +273,11 @@ void ServerImpl::start_worker(int client_socket)
 
     // We are done with this connection
     {
-        std::lock_guard<std::mutex> lck(mut);
+        std::lock_guard<std::mutex> lck(_mutex);
         close(client_socket);
         workers[client_socket].detach();
         workers.erase(client_socket);
-        cv.notify_one();
+        _cv.notify_one();
     }
 }
 
