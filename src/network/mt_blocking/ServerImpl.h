@@ -62,8 +62,8 @@ class ServerImpl : public Server
       void start_worker(int client_socket);
 
       std::map<int, std::thread> workers;
-      std::condition_variable cv;
-      std::mutex mut;
+      std::condition_variable _cv;
+      std::mutex _mutex;
 };
 
 } // namespace MTblocking

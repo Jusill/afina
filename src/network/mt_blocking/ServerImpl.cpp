@@ -88,7 +88,7 @@ void ServerImpl::Stop() {
     running.store(false);
     shutdown(_server_socket, SHUT_RDWR);
     {
-        std::lock_guard<std::mutex> lck(mut);
+        std::lock_guard<std::mutex> lck(_mutex);
         for (std::pair<const int, std::thread> &element : workers)
         {
             shutdown(element.first, SHUT_RD);
@@ -99,7 +99,7 @@ void ServerImpl::Stop() {
 // See Server.h
 void ServerImpl::Join()
 {
-    std::unique_lock<std::mutex> lck(mut);
+    std::unique_lock<std::mutex> lck(_mutex);
     while (workers.size() > 0)
     {
         cv.wait(lck);
@@ -149,7 +149,7 @@ void ServerImpl::OnRun()
         }
 
         {
-            std::lock_guard<std::mutex> lck(mut);
+            std::lock_guard<std::mutex> lck(_mutex);
             if (workers.size() >= max_workers)
             {
                 close(client_socket);
@@ -159,6 +159,13 @@ void ServerImpl::OnRun()
             workers.insert(std::pair<int, std::thread>(client_socket, std::thread(&ServerImpl::start_worker, this, client_socket)));
         }
     }
+
+    std::unique_lock<std::mutex> lck(_mutex);
+    while(workers.size() != 0)
+    {
+        cv.wait(lck);
+    }
+
     _logger->warn("Network stopped");
 }
 
