@@ -89,7 +89,7 @@ void ServerImpl::Stop() {
     shutdown(_server_socket, SHUT_RDWR);
     {
         std::lock_guard<std::mutex> lck(mut);
-        for (std::pair<const int, std::thread> & element : workers)
+        for (std::pair<const int, std::thread> &element : workers)
         {
             shutdown(element.first, SHUT_RD);
         }
@@ -104,6 +104,7 @@ void ServerImpl::Join()
     {
         cv.wait(lck);
     }
+
     assert(_thread.joinable());
     _thread.join();
     close(_server_socket);
@@ -155,23 +156,19 @@ void ServerImpl::OnRun()
                 continue;
             }
 
-            workers.insert(std::pair<int, std::thread>(client_socket, std::thread(&ServerImpl::WorkerFunction, this, client_socket)));
+            workers.insert(std::pair<int, std::thread>(client_socket, std::thread(&ServerImpl::start_worker, this, client_socket)));
         }
     }
     _logger->warn("Network stopped");
 }
 
-void ServerImpl::WorkerFunction(int client_socket)
+void ServerImpl::start_worker(int client_socket)
 {
-    // Here is connection state
-    // - parser: parse state of the stream
-    // - command_to_execute: last command parsed out of stream
-    // - arg_remains: how many bytes to read from stream to get command argument
-    // - argument_for_command: buffer stores argument
     std::size_t arg_remains;
     Protocol::Parser parser;
     std::string argument_for_command;
     std::unique_ptr<Execute::Command> command_to_execute;
+
     try
     {
         int readed_bytes = -1;
@@ -188,6 +185,7 @@ void ServerImpl::WorkerFunction(int client_socket)
             {
                 std::this_thread::sleep_for(std::chrono::seconds(3));
                 _logger->debug("Process {} bytes", readed_bytes);
+
                 // There is no command yet
                 if (!command_to_execute)
                 {
@@ -226,8 +224,8 @@ void ServerImpl::WorkerFunction(int client_socket)
                     argument_for_command.append(client_buffer, to_read);
 
                     std::memmove(client_buffer, client_buffer + to_read, readed_bytes - to_read);
-                    arg_remains -= to_read;
-                    readed_bytes -= to_read;
+                    arg_remains = arg_remains - to_read;
+                    readed_bytes = readed_bytes - to_read;
                 }
 
                 // Thre is command & argument - RUN!
@@ -279,3 +277,9 @@ void ServerImpl::WorkerFunction(int client_socket)
 } // namespace MTblocking
 } // namespace Network
 } // namespace Afina
+
+// Here is connection state
+// - parser: parse state of the stream
+// - command_to_execute: last command parsed out of stream
+// - arg_remains: how many bytes to read from stream to get command argument
+// - argument_for_command: buffer stores argument

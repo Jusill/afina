@@ -59,7 +59,7 @@ class ServerImpl : public Server
 
       uint32_t max_workers;
 
-      void WorkerFunction(int client_socket);
+      void start_worker(int client_socket);
 
       std::map<int, std::thread> workers;
       std::condition_variable cv;
