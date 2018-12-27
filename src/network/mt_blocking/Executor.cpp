@@ -1,6 +1,4 @@
-#ifndef AFINA_THREADPOOL_H
-#define AFINA_THREADPOOL_H
-
+#include <afina/Executor.h>
 #include <condition_variable>
 #include <functional>
 #include <memory>
@@ -15,18 +13,6 @@ namespace Afina {
 /**
  * # Thread pool
  */
-class Executor {
-    enum class State {
-        // Threadpool is fully operational, tasks could be added and get executed
-        kRun,
-
-        // Threadpool is on the way to be shutdown, no ned task could be added, but existing will be
-        // completed as requested
-        kStopping,
-
-        // Threadppol is stopped
-        kStopped
-    };
 
     Executor(std::string &_name, int _max_queue_size, int _lower = 4, int _higher = 8, int _idle_time = 1000):
               name(_name),
@@ -175,8 +161,5 @@ private:
     std::atomic<State> state = State::kRun;
 
     std::atomic<int> idle_threads;
-};
 
 } // namespace Afina
-
-#endif // AFINA_THREADPOOL_H
