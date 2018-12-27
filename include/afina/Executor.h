@@ -28,19 +28,8 @@ class Executor {
         kStopped
     };
 
-    Executor(std::string &_name, int _max_queue_size, int _lower = 4, int _higher = 8, int _idle_time = 1000):
-              name(_name),
-              max_queue_size(_max_queue_size),
-              lower_watermark(_lower),
-              higher_watermark(_higher),
-              idle_time(_idle_time),
-              state(State::kRun),
-              idle_threads(0) {}
-
-    ~Executor() {
-        tasks.erase();
-        threads.erase();
-    }
+    Executor(std::string &_name, int _max_queue_size, int _lower = 4, int _higher = 8, int _idle_time = 1000);
+    ~Executor();
 
     /**
      * Signal thread pool to stop, it will stop accepting new jobs and close threads just after each become
@@ -48,16 +37,7 @@ class Executor {
      *
      * In case if await flag is true, call won't return until all background jobs are done and all threads are stopped
      */
-    void Stop(bool await = false) {
-        state = State::kStopping;
-        std::unique_lock<std::mutext> lock(mutex);
-        while (tasks.size() > 0) {
-            empty_condition.notify_one();
-        }
-        if (await) {
-            while (state == State::kStopping) {}
-        }
-    };
+    void Stop(bool await = false);
 
     /**
      * Add function to be executed on the threadpool. Method returns true in case if task has been placed
