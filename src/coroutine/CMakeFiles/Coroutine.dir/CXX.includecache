@@ -1,0 +1,32 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/afina/coroutine/Engine.h
+cstdint
+-
+iostream
+-
+map
+-
+setjmp.h
+-
+tuple
+-
+
+/home/boris/Документы/afina/src/coroutine/Engine.cpp
+afina/coroutine/Engine.h
+-
+setjmp.h
+-
+stdio.h
+-
+string.h
+-
+cstring
+-
+

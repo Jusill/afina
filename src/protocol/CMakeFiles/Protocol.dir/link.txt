@@ -1,0 +1,2 @@
+/usr/bin/ar qc libProtocol.a  CMakeFiles/Protocol.dir/Parser.cpp.o
+/usr/bin/ranlib libProtocol.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libAllocator.a  CMakeFiles/Allocator.dir/Simple.cpp.o CMakeFiles/Allocator.dir/Pointer.cpp.o
+/usr/bin/ranlib libAllocator.a
