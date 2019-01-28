@@ -1,0 +1,55 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/boris/Документы/afina/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_595f2/fast"
+/usr/bin/make -f CMakeFiles/cmTC_595f2.dir/build.make CMakeFiles/cmTC_595f2.dir/build
+make[1]: вход в каталог «/home/boris/Документы/afina/build/CMakeFiles/CMakeTmp»
+Building C object CMakeFiles/cmTC_595f2.dir/CheckSymbolExists.c.o
+/usr/bin/cc   -std=c99 -Wall -Werror -fPIC -march=native    -o CMakeFiles/cmTC_595f2.dir/CheckSymbolExists.c.o   -c /home/boris/Документы/afina/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTC_595f2
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_595f2.dir/link.txt --verbose=1
+/usr/bin/cc  -std=c99 -Wall -Werror -fPIC -march=native     -rdynamic CMakeFiles/cmTC_595f2.dir/CheckSymbolExists.c.o  -o cmTC_595f2 
+CMakeFiles/cmTC_595f2.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text+0x1b): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_595f2.dir/build.make:97: recipe for target 'cmTC_595f2' failed
+make[1]: *** [cmTC_595f2] Error 1
+make[1]: выход из каталога «/home/boris/Документы/afina/build/CMakeFiles/CMakeTmp»
+Makefile:126: recipe for target 'cmTC_595f2/fast' failed
+make: *** [cmTC_595f2/fast] Error 2
+
+File /home/boris/Документы/afina/build/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/boris/Документы/afina/build/CMakeFiles/CMakeTmp
+
+Run Build Command:"/usr/bin/make" "cmTC_d75ea/fast"
+/usr/bin/make -f CMakeFiles/cmTC_d75ea.dir/build.make CMakeFiles/cmTC_d75ea.dir/build
+make[1]: вход в каталог «/home/boris/Документы/afina/build/CMakeFiles/CMakeTmp»
+Building C object CMakeFiles/cmTC_d75ea.dir/CheckFunctionExists.c.o
+/usr/bin/cc   -std=c99 -Wall -Werror -fPIC -march=native -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTC_d75ea.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-3.10/Modules/CheckFunctionExists.c
+Linking C executable cmTC_d75ea
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d75ea.dir/link.txt --verbose=1
+/usr/bin/cc  -std=c99 -Wall -Werror -fPIC -march=native -DCHECK_FUNCTION_EXISTS=pthread_create    -rdynamic CMakeFiles/cmTC_d75ea.dir/CheckFunctionExists.c.o  -o cmTC_d75ea -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+CMakeFiles/cmTC_d75ea.dir/build.make:97: recipe for target 'cmTC_d75ea' failed
+make[1]: *** [cmTC_d75ea] Error 1
+make[1]: выход из каталога «/home/boris/Документы/afina/build/CMakeFiles/CMakeTmp»
+Makefile:126: recipe for target 'cmTC_d75ea/fast' failed
+make: *** [cmTC_d75ea/fast] Error 2
+
+
