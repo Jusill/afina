@@ -51,30 +51,8 @@ class Executor {
      *
      * In case if await flag is true, call won't return until all background jobs are done and all threads are stopped
      */
-    void Stop(bool await = false) {
-        state = State::kStopping;
-        std::unique_lock<std::mutex> lock(mutex);
-        while (tasks.size() > 0) {
-            empty_condition.notify_one();
-        }
-        if (await) {
-            while (state == State::kStopping) {
-                stop_condition.wait(lock);
-            }
-        }
-    };
-
-    void Start() {
-        std::unique_lock<std::mutex> lock(mutex);
-        state = State::kRun;
-        for (int i = 0; i < lower_watermark; i++) {
-            auto id = std::thread::id::id();
-            std::unique_ptr<std::thread> new_thread(&thread_run, this, id);
-            threads.push_back(std::move(new_thread));
-            threads.back()->detach();
-        }
-        idle_threads = lower_watermark;
-    }
+    void Stop(bool await = false);
+    void Start();
 
     /**
      * Add function to be executed on the threadpool. Method returns true in case if task has been placed
@@ -124,50 +102,8 @@ private:
     int higher_watermark;
     int idle_time;
 
-
-    void Delete_thread_by_id(Executor *executor, std::thread::id id) {
-        auto it = std::find_if(executor->threads.begin(), executor->threads.end(), [&](std::unique_ptr<std::thread>& obj){return obj->get_id() == id;});
-        assert(it != executor->threads.end());
-        executor->threads.erase(it);
-    }
-    void thread_run(Executor* executor, std::thread::id id) {
-        while (state == State::kRun) {
-            auto start = std::chrono::system_clock::now();
-            std::unique_lock<std::mutex> lock(executor->mutex);
-            executor->idle_threads++;
-
-            while (executor->tasks.empty()) {
-                empty_condition.wait_until(lock, start + (executor->idle_time)*100ms);
-
-                auto end = std::chrono::system_clock::now();
-                int elapsed = std::chrono::duration_cast<std::chrono::milliseconds> (end - start).count();
-
-                 if ((elapsed >= executor->idle_time) && (executor->threads.size() > executor->lower_watermark)) {
-                    executor->Delete_thread_by_id(executor, id);
-                    return;
-                }
-                start = std::chrono::system_clock::now();
-            }
-
-            executor->idle_threads--;
-           
-            auto task = executor->tasks.back();
-            executor->tasks.pop_back();
-
-            lock.unlock();
-            task();
-            lock.lock();
-            
-            if (executor->state == State::kStopping) {
-                executor->Delete_thread_by_id(executor, id);
-                if (executor->threads.size() == 0) {
-                    executor->state = State::kStopped;
-                    executor->stop_condition.notify_one();
-                }
-                return;
-            }
-        }
-    }
+    void Delete_thread_by_id(Executor *executor, std::thread::id id);
+    void thread_run(Executor* executor, std::thread::id id);
 
     // No copy/move/assign allowed
     Executor(const Executor &);            // = delete;
