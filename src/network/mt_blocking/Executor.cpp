@@ -14,84 +14,75 @@ Executor::Executor(std::string name, int low_watermark, int hight_watermark, int
 Executor::~Executor() {}
 
 // See Executor.h
-void Executor::Start(std::shared_ptr<spdlog::logger> logger) {
-    _logger = logger;
-    _state.store(State::kRun);
-    std::unique_lock<std::mutex> lock(this->_mutex);
-    for (int i = 0; i < _low_watermark; i++) {
-        _threads.push_back(std::thread(&perform, this));
+void Executor::Stop(bool await = false) {
+    state = State::kStopping;
+    std::unique_lock<std::mutex> lock(mutex);
+    while (tasks.size() > 0) {
+        empty_condition.notify_one();
     }
-    _free_threads = 0;
+    if (await) {
+        while (state == State::kStopping) {
+            stop_condition.wait(lock);
+        }
+    }
 }
 
 // See Executor.h
-void Executor::Stop(bool await) {
-    _state.store(State::kStopping);
-    _empty_condition.notify_all();
-    {
-        std::unique_lock<std::mutex> lock(_mutex);
-        while (!_threads.empty()) {
-            _cv_stopping.wait(lock);
-        }
+void Executor::Start() {
+    std::unique_lock<std::mutex> lock(mutex);
+    state = State::kRun;
+    for (int i = 0; i < lower_watermark; i++) {
+        auto id = std::thread::id::id();
+        std::unique_ptr<std::thread> new_thread(&thread_run, this, id);
+        threads.push_back(std::move(new_thread));
+        threads.back()->detach();
     }
-    _state.store(State::kStopped);
+    idle_threads = lower_watermark;
 }
 
-// See Executor.h
-void perform(Executor *executor) {
-    executor->_logger->debug("new thread");
-    while (executor->_state.load() == Executor::State::kRun) {
-        std::function<void()> task;
-        {
-            std::unique_lock<std::mutex> lock(executor->_mutex);
-            auto time_until = std::chrono::system_clock::now() + std::chrono::milliseconds(executor->_idle_time);
-            while (executor->_tasks.empty() && executor->_state.load() == Executor::State::kRun) {
-                executor->_logger->debug("waiting");
-                executor->_free_threads++;
-                if (executor->_empty_condition.wait_until(lock, time_until) == std::cv_status::timeout) {
-                    if (executor->_threads.size() > executor->_low_watermark) {
-                        executor->_erase_thread();
-                        return;
-                    }
-                    else {
-                        executor->_empty_condition.wait(lock);
-                    }
-                }
-                executor->_free_threads--; 
+void Executor::Delete_thread_by_id(Executor *executor, std::thread::id id) {
+    auto it = std::find_if(executor->threads.begin(), executor->threads.end(), [&](std::unique_ptr<std::thread>& obj){return obj->get_id() == id;});
+    assert(it != executor->threads.end());
+    executor->threads.erase(it);
+}
+
+void Executor::thread_run(Executor* executor, std::thread::id id) {
+    while (state == State::kRun) {
+        auto start = std::chrono::system_clock::now();
+        std::unique_lock<std::mutex> lock(executor->mutex);
+        executor->idle_threads++;
+
+        while (executor->tasks.empty()) {
+            empty_condition.wait_until(lock, start + (executor->idle_time)*100ms);
+
+            auto end = std::chrono::system_clock::now();
+            int elapsed = std::chrono::duration_cast<std::chrono::milliseconds> (end - start).count();
+
+                if ((elapsed >= executor->idle_time) && (executor->threads.size() > executor->lower_watermark)) {
+                executor->Delete_thread_by_id(executor, id);
+                return;
             }
-            executor->_logger->debug("stop waiting");
-            if (executor->_tasks.empty()) {
-                continue;
-            }
-            task = executor->_tasks.front();
-            executor->_tasks.pop_front();
+            start = std::chrono::system_clock::now();
         }
+
+        executor->idle_threads--;
+        
+        auto task = executor->tasks.back();
+        executor->tasks.pop_back();
+
+        lock.unlock();
         task();
-    }
-    {
-        std::unique_lock<std::mutex> lock(executor->_mutex);
-        executor->_erase_thread();
-        if (executor->_threads.empty()) {
-            executor->_cv_stopping.notify_all();
+        lock.lock();
+        
+        if (executor->state == State::kStopping) {
+            executor->Delete_thread_by_id(executor, id);
+            if (executor->threads.size() == 0) {
+                executor->state = State::kStopped;
+                executor->stop_condition.notify_one();
+            }
+            return;
         }
     }
-}
-
-void Executor::_erase_thread() {
-    std::thread::id this_id = std::this_thread::get_id();
-    auto iter = std::find_if(_threads.begin(), _threads.end(), [=](std::thread &t) { return (t.get_id() == this_id); });
-    if (iter != _threads.end()) {
-        iter->detach();
-        _free_threads--; 
-        _threads.erase(iter);
-        _logger->debug("i died");
-        return;
-    }
-    throw std::runtime_error("error while erasing thread");
-}
-
-void Executor::_add_thread() {
-    _threads.push_back(std::thread(&perform, this));
 }
 
 } // namespace Afina
